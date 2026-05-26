@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compresor y Convertidor de Imágenes</title>
+    <link rel="stylesheet" href="./css/estilos.css">
+</head>
+<body>
+
+<div class="container" style="max-width: 500px; margin-top: 30px;">
+    <div class="card">
+        <h2 style="text-align: center; color: #2c3e50;">Conversor de Imagen Pro</h2>
+        
+        <label>1. Selecciona una imagen:</label>
+        <input type="file" id="imageInput" accept="image/*" onchange="loadImage(event)">
+        
+        <img id="preview" alt="Vista previa" style="width: 100%; max-height: 200px; object-fit: contain; margin-top: 15px; border-radius: 6px; display: none; border: 1px dashed #ccc;">
+
+        <label>2. Formato de salida:</label>
+        <select id="formatSelect" onchange="processImage()">
+            <option value="image/webp">WebP (Recomendado - Pesa muy poco)</option>
+            <option value="image/jpeg">JPEG (Estandár)</option>
+            <option value="image/png">PNG (Sin pérdida)</option>
+        </select>
+
+        <div id="qualitySection">
+            <label>3. Calidad de compresión:</label>
+            <div class="slider-container">
+                <input type="range" id="qualityRange" min="10" max="100" value="80" style="flex:1;" oninput="updateQualityLabel(this.value)" onchange="processImage()">
+                <span class="slider-value" id="qualityLabel" style="margin-left:10px;">80%</span>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div>Peso Original:<span id="originalSize" style="display:block; font-weight:bold; margin-top:5px;">-</span></div>
+            <div>Peso Estimado:<span id="compressedSize" style="display:block; font-weight:bold; margin-top:5px; color: #27ae60;">-</span></div>
+        </div>
+
+        <button class="btn-block" id="downloadBtn" style="background-color: #27ae60;" onclick="downloadImage()" disabled>Optimizar y Descargar</button>
+    </div>
+</div>
+
+<canvas id="conversionCanvas" style="display:none;"></canvas>
+
+<script>
+    let originalImage = null, originalFileName = "", compressedBlob = null;
+    function loadImage(event) {
+        const file = event.target.files[0]; if (!file) return;
+        originalFileName = file.name.substring(0, file.name.lastIndexOf('.'));
+        document.getElementById('originalSize').innerText = formatBytes(file.size);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            originalImage = new Image();
+            originalImage.onload = function() {
+                const preview = document.getElementById('preview'); preview.src = e.target.result; preview.style.display = "block";
+                processImage();
+            };
+            originalImage.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    function updateQualityLabel(val) { document.getElementById('qualityLabel').innerText = val + "%"; }
+    function processImage() {
+        if (!originalImage) return;
+        const format = document.getElementById('formatSelect').value;
+        const quality = parseInt(document.getElementById('qualityRange').value) / 100;
+        document.getElementById('qualityRange').disabled = (format === "image/png");
+        const canvas = document.getElementById('conversionCanvas'); const ctx = canvas.getContext('2d');
+        canvas.width = originalImage.width; canvas.height = originalImage.height;
+        ctx.drawImage(originalImage, 0, 0);
+        canvas.toBlob(function(blob) {
+            compressedBlob = blob; document.getElementById('compressedSize').innerText = formatBytes(blob.size);
+            document.getElementById('downloadBtn').disabled = false;
+        }, format, quality);
+    }
+    function downloadImage() {
+        if (!compressedBlob) return;
+        const ext = document.getElementById('formatSelect').value.split('/')[1];
+        const url = URL.createObjectURL(compressedBlob); const a = document.createElement('a');
+        a.href = url; a.download = `${originalFileName}_optimizado.${ext}`; a.click(); URL.revokeObjectURL(url);
+    }
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes'; const k = 1024, sizes = ['Bytes', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+</script>
+</body>
+</html>

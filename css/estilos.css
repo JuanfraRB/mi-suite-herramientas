@@ -1,0 +1,442 @@
+/* ==========================================================================
+   CONFIGURACIÓN BASE Y VARIABLES
+   ========================================================================== */
+:root {
+  --bg-main: #f0f2f5;
+  --text-main: #1e293b;
+  --white: #ffffff;
+  --border-color: #cbd5e1;
+
+  /* Colores temáticos */
+  --clr-primary: #4f46e5;
+  --clr-success: #10b981;
+  --clr-warning: #f59e0b;
+  --clr-danger: #ef4444;
+
+  /* Variables específicas de tus apps */
+  --bg-gradient-hub: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --btn-divisor: #4a90e2;
+  --btn-vacaciones: #28a745;
+  --btn-horas: #f39c12;
+  --btn-finanzas: #6c757d;
+  --btn-qr: #17a2b8;
+  --btn-editor: #e67e22;
+  --btn-conversor: #8e44ad;
+  --btn-tablero: #2c3e50;
+  --todo: #4a90e2;
+  --progress: #f39c12;
+  --done: #27ae60;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.5;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Contenedores generales */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+.card,
+.block-white {
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  padding: 25px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+/* Elementos de formulario compartidos */
+label {
+  display: block;
+  font-weight: bold;
+  margin-top: 15px;
+  margin-bottom: 5px;
+  color: #444;
+  font-size: 14px;
+}
+input[type="text"],
+input[type="number"],
+input[type="file"],
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  background: var(--white);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--clr-primary);
+}
+
+/* ==========================================================================
+   1. ESTILOS DEL PANEL PRINCIPAL (INDEX.HTML)
+   ========================================================================== */
+.hub-body {
+  background: var(--bg-gradient-hub);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+.hub-container {
+  text-align: center;
+  max-width: 500px;
+  padding: 20px;
+}
+.hub-container h1 {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+}
+.hub-container p {
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+  opacity: 0.9;
+}
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.btn-access {
+  display: block;
+  text-decoration: none;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 18px 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    filter 0.2s;
+  text-align: center;
+}
+.btn-access:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  filter: brightness(1.1);
+}
+.btn-access:active {
+  transform: translateY(1px);
+}
+.btn-divisor {
+  background-color: var(--btn-divisor);
+}
+.btn-vacaciones {
+  background-color: var(--btn-vacaciones);
+}
+.btn-horas {
+  background-color: var(--btn-horas);
+}
+.btn-finanzas {
+  background-color: var(--btn-finanzas);
+}
+.btn-qr {
+  background-color: var(--btn-qr);
+}
+.btn-conversor {
+  background-color: var(--btn-conversor);
+}
+.btn-editor {
+  background-color: var(--btn-editor);
+}
+.btn-tablero {
+  background-color: var(--btn-tablero);
+}
+/* ==========================================================================
+   2. ESTILOS DEL TABLERO KANBAN
+   ========================================================================== */
+.header-actions {
+  max-width: 1000px;
+  margin: 0 auto 20px auto;
+  display: flex;
+  gap: 10px;
+}
+.btn-add {
+  padding: 12px 20px;
+  background: #764ba2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  align-items: start;
+}
+.column {
+  background: #ebecf0;
+  padding: 15px;
+  border-radius: 8px;
+  min-height: 400px;
+}
+.column h3 {
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #ccc;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+.col-todo h3 {
+  border-color: var(--todo);
+  color: var(--todo);
+}
+.col-progress h3 {
+  border-color: var(--progress);
+  color: var(--progress);
+}
+.col-done h3 {
+  border-color: var(--done);
+  color: var(--done);
+}
+.card-list {
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 5px 0;
+}
+.card-list.drag-over {
+  background: #e2e4e9;
+  border-radius: 6px;
+}
+
+.kanban-card {
+  background: white;
+  padding: 14px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: grab;
+  position: relative;
+  border-left: 5px solid #ccc;
+}
+.col-todo .kanban-card {
+  border-left-color: var(--todo);
+}
+.col-progress .kanban-card {
+  border-left-color: var(--progress);
+}
+.col-done .kanban-card {
+  border-left-color: var(--done);
+}
+.card-text {
+  font-weight: 500;
+  font-size: 14px;
+  padding-right: 20px;
+  word-break: break-all;
+}
+.btn-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-delete:hover {
+  color: #dc3545;
+}
+
+/* ==========================================================================
+   3. TABLAS E HISTORIALES (FINANZAS Y HORAS)
+   ========================================================================== */
+.balance-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.card-stat {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+.card-stat h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+.card-stat p {
+  margin: 10px 0 0 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+  margin-top: 10px;
+}
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+.btn-del {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.btn-del:hover {
+  color: var(--clr-danger);
+}
+
+/* ==========================================================================
+   4. INTERFACES ESPECÍFICAS (QR, CONVERSOR, EDITOR)
+   ========================================================================== */
+/* Pestañas QR */
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #777;
+}
+.tab-btn.active {
+  color: var(--clr-primary);
+  border-bottom: 3px solid var(--clr-primary);
+}
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+.qr-output-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+/* Conversor */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider-value {
+  font-weight: bold;
+  color: var(--clr-success);
+  width: 40px;
+}
+.info-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: #eef2f7;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* Botón estándar de acción interna */
+.btn-block {
+  width: 100%;
+  padding: 12px;
+  background: var(--clr-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+  font-size: 15px;
+}
+.btn-block:hover {
+  filter: brightness(1.05);
+}
+
+/* ==========================================================================
+   DISEÑO RESPONSIVE GENERAL (MÓVILES)
+   ========================================================================== */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+  .card,
+  .block-white {
+    padding: 15px;
+  }
+  .main-grid,
+  .board,
+  .balance-cards {
+    grid-template-columns: 1fr !important;
+    gap: 15px;
+  }
+  .column {
+    min-height: auto;
+  }
+  .card-list {
+    min-height: 100px;
+  }
+  .mobile-move-select {
+    display: block;
+    margin-top: 10px;
+    width: 100%;
+    padding: 4px;
+  }
+  .btn-block {
+    padding: 14px;
+    font-size: 16px;
+  }
+}

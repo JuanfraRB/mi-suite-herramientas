@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta QR: Generador y Lector</title>
+    <link rel="stylesheet" href="./css/estilos.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+
+<div class="container" style="max-width: 450px; margin-top: 40px;">
+    <div class="card">
+        <h2 style="text-align: center; color: #2c3e50;">Herramienta QR</h2>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('generate')">Generar</button>
+            <button class="tab-btn" onclick="switchTab('read')">Leer Imagen</button>
+        </div>
+
+        <div id="tab-generate" class="tab-content active">
+            <label>Texto o Enlace Web:</label>
+            <input type="text" id="qrText" placeholder="Escribe aquí para crear el QR..." oninput="generateQR()">
+            
+            <div class="qr-output-container">
+                <div id="qrcode" style="padding: 10px; background: white;"></div>
+                <button class="btn-block" onclick="downloadQR()">Descargar Imagen QR</button>
+            </div>
+        </div>
+
+        <div id="tab-read" class="tab-content">
+            <label>Sube una foto de un QR:</label>
+            <input type="file" id="qrFile" accept="image/*" onchange="scanQR()">
+            
+            <label>Contenido detectado:</label>
+            <div id="result-text" style="background: #eef2f7; padding: 12px; border-radius: 6px; word-break: break-all; margin-top: 10px; font-weight: bold; text-align: center;">Ningún código detectado</div>
+            <button class="btn-block" id="btnCopy" onclick="copyResult()" style="display:none; background-color: #27ae60;">Copiar al Portapapeles</button>
+        </div>
+    </div>
+</div>
+
+<canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+<script>
+    let qrGenerator = null;
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        if(tab === 'generate') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('tab-generate').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('tab-read').classList.add('active');
+        }
+    }
+    function generateQR() {
+        const text = document.getElementById('qrText').value.trim();
+        const container = document.getElementById('qrcode');
+        container.innerHTML = "";
+        if(!text) return;
+        qrGenerator = new QRCode(container, { text: text, width: 200, height: 200, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+    }
+    function downloadQR() {
+        const img = document.querySelector('#qrcode img');
+        if(!img) return alert("Escribe texto primero.");
+        const a = document.createElement('a'); a.href = img.src; a.download = 'codigo_qr.png'; a.click();
+    }
+    function scanQR() {
+        const fileInput = document.getElementById('qrFile');
+        const resultDiv = document.getElementById('result-text');
+        const btnCopy = document.getElementById('btnCopy');
+        if(!fileInput.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.getElementById('hiddenCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width; canvas.height = img.height;
+                ctx.drawImage(img, 0, 0, img.width, img.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+                if (code) { resultDiv.innerText = code.data; btnCopy.style.display = 'block'; }
+                else { resultDiv.innerText = "No se pudo leer ningún QR."; btnCopy.style.display = 'none'; }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    }
+    function copyResult() { navigator.clipboard.writeText(document.getElementById('result-text').innerText); alert("¡Copiado!"); }
+    window.onload = function() { document.getElementById('qrText').value = "https://google.com"; generateQR(); }
+</script>
+</body>
+</html>

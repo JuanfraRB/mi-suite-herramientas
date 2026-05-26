@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Splitter a ZIP</title>
+    <link rel="stylesheet" href="./css/estilos.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<div class="container" style="max-width: 500px; margin-top: 40px;">
+    <div class="card">
+        <h2 style="text-align: center; color: var(--clr-primary);">PDF Splitter a ZIP</h2>
+        
+        <label>1. Archivo PDF original:</label>
+        <input type="file" id="pdfInput" accept="application/pdf">
+        
+        <label>2. Nombre base de los archivos:</label>
+        <input type="text" id="baseName" placeholder="Ej: Factura_Venta">
+        
+        <label>3. Hojas por cada PDF:</label>
+        <input type="number" id="pagesPerFile" value="1" min="1">
+        
+        <button id="btnProcesar" class="btn-block" onclick="processPDF()">Generar ZIP</button>
+        
+        <div id="log" style="margin-top: 20px; padding: 12px; background: #eef2f7; border-radius: 6px; font-size: 13px; max-height: 150px; overflow-y: auto; font-family: monospace; line-height: 1.5; color: #475569;">
+            Esperando archivo...
+        </div>
+    </div>
+</div>
+
+<script>
+    async function processPDF() {
+        const fileInput = document.getElementById('pdfInput');
+        const baseName = document.getElementById('baseName').value.trim() || "documento_dividido";
+        const pagesPerFile = parseInt(document.getElementById('pagesPerFile').value);
+        const log = document.getElementById('log');
+        const btn = document.getElementById('btnProcesar');
+
+        if (!fileInput.files[0]) {
+            alert("Por favor, selecciona un archivo PDF.");
+            return;
+        }
+
+        // Bloqueamos el botón usando las clases comunes
+        btn.disabled = true;
+        btn.innerText = "Procesando...";
+        log.innerHTML = "Leyendo archivo original...<br>";
+
+        try {
+            const zip = new JSZip(); // Instancia del ZIP
+            const arrayBuffer = await fileInput.files[0].arrayBuffer();
+            const originalPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+            const totalPages = originalPdf.getPageCount();
+            
+            let fileCounter = 1;
+
+            for (let i = 0; i < totalPages; i += pagesPerFile) {
+                const newPdf = await PDFLib.PDFDocument.create();
+                
+                const range = [];
+                for (let j = i; j < i + pagesPerFile && j < totalPages; j++) {
+                    range.push(j);
+                }
+
+                const copiedPages = await newPdf.copyPages(originalPdf, range);
+                copiedPages.forEach(page => newPdf.addPage(page));
+
+                const pdfBytes = await newPdf.save();
+                const fileName = `${baseName}_${fileCounter}.pdf`;
+                
+                // Añadimos el archivo generado al paquete ZIP
+                zip.file(fileName, pdfBytes);
+                
+                log.innerHTML += `Agregado al ZIP: ${fileName}<br>`;
+                // Auto-scroll del log para ir viendo el proceso siempre activo
+                log.scrollTop = log.scrollHeight;
+                fileCounter++;
+            }
+
+            log.innerHTML += "<span style='color: var(--clr-primary); font-weight: bold;'>Comprimiendo todo...</span><br>";
+            log.scrollTop = log.scrollHeight;
+
+            // Generamos el archivo ZIP final
+            const content = await zip.generateAsync({type: "blob"});
+            const zipFileName = `${baseName}_paquete.zip`;
+            
+            downloadBlob(content, zipFileName);
+            
+            log.innerHTML += "<span style='color: var(--clr-success); font-weight: bold;'>¡ZIP descargado con éxito!</span>";
+            log.scrollTop = log.scrollHeight;
+        } catch (error) {
+            console.error(error);
+            log.innerHTML += "<span style='color: var(--clr-danger); font-weight: bold;'>Error en el proceso.</span>";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Generar ZIP";
+        }
+    }
+
+    function downloadBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>

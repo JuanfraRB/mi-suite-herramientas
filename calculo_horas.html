@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Horas Anuales</title>
+    <link rel="stylesheet" href="./css/estilos.css">
+    <style>
+        /* Añadimos pequeñas reglas específicas para tus alertas de colores de balance */
+        .balance.positivo, #balance-anual.positivo { color: var(--clr-success); font-weight: bold; }
+        .balance.negativo, #balance-anual.negativo { color: var(--clr-danger); font-weight: bold; }
+        .balance.cero, #balance-anual.cero { color: #64748b; font-weight: bold; }
+        
+        /* Ajuste estético menor para que los inputs queden compactos dentro de la tabla */
+        table input[type="number"] {
+            padding: 6px 10px;
+            max-width: 90px;
+            text-align: center;
+        }
+        
+        /* Contenedor con scroll para evitar que la tabla rompa el móvil de lado */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 900px; margin-top: 20px;">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <h1 style="margin: 0; color: var(--clr-primary); font-size: 24px;">Calculadora de Jornada</h1>
+            
+            <div class="control-ano" style="display: flex; align-items: center; gap: 10px;">
+                <label for="year" style="margin: 0; white-space: nowrap;">Año de Control:</label>
+                <input type="number" id="year" style="max-width: 110px; padding: 8px 12px;">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="tabla-meses">
+                <thead>
+                    <tr>
+                        <th>Mes</th>
+                        <th>Horas Trab.</th>
+                        <th>Días Vacac.</th>
+                        <th>Horas Ext. Cobradas</th>
+                        <th>Balance Mes</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="resumen-total" id="resumen-total" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px 20px; text-align: right; font-size: 18px; font-weight: 700; color: var(--text-main);">
+            Balance Anual Total: <span id="balance-anual" class="cero">0.00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Constantes de cálculo
+    const HORAS_BASE_MES = 162;
+    const FACTOR_VACACIONES = 5.23;
+    const NOMBRES_MESES = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    // Elementos del DOM
+    const inputAno = document.getElementById('year');
+    const cuerpoTabla = document.getElementById('cuerpo-tabla');
+    const spanBalanceAnual = document.getElementById('balance-anual');
+
+    // --- INICIALIZACIÓN ---
+    document.addEventListener('DOMContentLoaded', () => {
+        generarFilasMeses();
+        
+        // Establecer el año actual por defecto
+        inputAno.value = new Date().getFullYear();
+        
+        // Cargar datos del año actual
+        cargarDatos(inputAno.value);
+
+        // 1. Cuando cambia el año
+        inputAno.addEventListener('change', () => {
+            cargarDatos(inputAno.value);
+        });
+
+        // 2. Cuando se modifica cualquier input de la tabla
+        cuerpoTabla.addEventListener('input', (evento) => {
+            if (evento.target.tagName === 'INPUT' && evento.target.type === 'number') {
+                const fila = evento.target.closest('tr');
+                const mesIndex = fila.dataset.mes;
+                
+                calcularFila(mesIndex);
+                guardarDatos(inputAno.value);
+                calcularTotalAnual();
+            }
+        });
+    });
+
+    // --- LÓGICA DE LA APLICACIÓN ---
+    function generarFilasMeses() {
+        cuerpoTabla.innerHTML = '';
+        NOMBRES_MESES.forEach((nombre, index) => {
+            const fila = document.createElement('tr');
+            fila.dataset.mes = index;
+            
+            fila.innerHTML = `
+                <td><strong>${nombre}</strong></td>
+                <td><input type="number" class="input-horas" min="0" placeholder="0"></td>
+                <td><input type="number" class="input-vacas" min="0" placeholder="0"></td>
+                <td><input type="number" class="input-extras" min="0" placeholder="0"></td>
+                <td class="balance" id="balance-${index}">0.00</td>
+            `;
+            cuerpoTabla.appendChild(fila);
+        });
+    }
+
+    function calcularFila(index) {
+        const fila = cuerpoTabla.rows[index];
+        if (!fila) return;
+
+        const inputHoras = fila.querySelector('.input-horas');
+        const inputVacas = fila.querySelector('.input-vacas');
+        const inputExtras = fila.querySelector('.input-extras');
+        const spanBalance = document.getElementById(`balance-${index}`);
+
+        const horas = parseFloat(inputHoras.value) || 0;
+        const vacas = parseFloat(inputVacas.value) || 0;
+        const extras = parseFloat(inputExtras.value) || 0;
+
+        // Fórmula matemática original
+        const balanceMes = (horas + (vacas * FACTOR_VACACIONES)) - HORAS_BASE_MES - extras;
+        
+        spanBalance.textContent = balanceMes.toFixed(2);
+
+        spanBalance.classList.remove('positivo', 'negativo', 'cero');
+        if (balanceMes > 0.01) {
+            spanBalance.classList.add('positivo');
+        } else if (balanceMes < -0.01) {
+            spanBalance.classList.add('negativo');
+        } else {
+            spanBalance.classList.add('cero');
+        }
+    }
+
+    function calcularTotalAnual() {
+        let total = 0;
+        for (let i = 0; i < NOMBRES_MESES.length; i++) {
+            const spanBalance = document.getElementById(`balance-${i}`);
+            total += parseFloat(spanBalance.textContent) || 0;
+        }
+        
+        spanBalanceAnual.textContent = total.toFixed(2);
+        spanBalanceAnual.classList.remove('positivo', 'negativo', 'cero');
+        if (total > 0.01) {
+            spanBalanceAnual.classList.add('positivo');
+        } else if (total < -0.01) {
+            spanBalanceAnual.classList.add('negativo');
+        } else {
+            spanBalanceAnual.classList.add('cero');
+        }
+    }
+
+    // --- MANEJO DE LOCALSTORAGE ---
+    function guardarDatos(ano) {
+        if (!ano) return;
+        const key = `calculadoraHoras_${ano}`;
+        const datosAno = [];
+
+        for (let i = 0; i < NOMBRES_MESES.length; i++) {
+            const fila = cuerpoTabla.rows[i];
+            const datosMes = {
+                horas: fila.querySelector('.input-horas').value,
+                vacas: fila.querySelector('.input-vacas').value,
+                extras: fila.querySelector('.input-extras').value
+            };
+            datosAno.push(datosMes);
+        }
+        localStorage.setItem(key, JSON.stringify(datosAno));
+    }
+
+    function cargarDatos(ano) {
+        const key = `calculadoraHoras_${ano}`;
+        const datosGuardados = localStorage.getItem(key);
+
+        if (datosGuardados) {
+            const datosAno = JSON.parse(datosGuardados);
+            datosAno.forEach((datosMes, index) => {
+                const fila = cuerpoTabla.rows[index];
+                if (fila) {
+                    fila.querySelector('.input-horas').value = datosMes.horas || '';
+                    fila.querySelector('.input-vacas').value = datosMes.vacas || '';
+                    fila.querySelector('.input-extras').value = datosMes.extras || '';
+                    calcularFila(index);
+                }
+            });
+        } else {
+            limpiarFormulario();
+        }
+        calcularTotalAnual();
+    }
+
+    function limpiarFormulario() {
+        for (let i = 0; i < NOMBRES_MESES.length; i++) {
+            const fila = cuerpoTabla.rows[i];
+            if (fila) {
+                fila.querySelector('.input-horas').value = '';
+                fila.querySelector('.input-vacas').value = '';
+                fila.querySelector('.input-extras').value = '';
+                calcularFila(i);
+            }
+        }
+    }
+</script>
+</body>
+</html>

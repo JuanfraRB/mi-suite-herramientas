@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Vacaciones de Personal</title>
+    <link rel="stylesheet" href="./css/estilos.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Reglas estructurales específicas para este Dashboard organizativo */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .panel {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .user-name-input {
+            flex: 1;
+            padding: 6px 10px !important;
+            margin: 0 !important;
+            font-size: 14px;
+        }
+        .calendar-section {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .cal-header button {
+            background: var(--clr-primary);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        .cal-header button:hover { opacity: 0.9; }
+        .cal-header select {
+            padding: 6px 12px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: bold;
+            color: #64748b;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .day-cell {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            min-height: 85px;
+            padding: 6px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .day-cell:hover:not(.empty) { background: #f1f5f9; }
+        .day-cell.empty { background: transparent; border-color: transparent; cursor: default; }
+        .day-num { font-weight: bold; font-size: 14px; color: var(--text-main); display: block; margin-bottom: 4px; }
+        .vacation-indicator {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 3px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-clear { background-color: var(--clr-danger) !important; margin-top: 10px; }
+        .btn-pdf { background-color: var(--clr-success) !important; margin-top: 15px; }
+
+        /* Media query para adaptar la estructura a teléfonos móviles */
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .day-cell { min-height: 65px; padding: 4px; }
+            .vacation-indicator { font-size: 9px; padding: 1px 3px; }
+        }
+
+        /* Estilos específicos ocultos para el generador PDF */
+        #pdf-template { display: none; background: white; padding: 20px; }
+        .pdf-page { page-break-after: always; box-sizing: border-box; font-family: sans-serif; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 0; }
+        .pdf-month { border: 1px solid #ccc; padding: 10px; border-radius: 6px; background: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 1200px; margin-top: 20px;">
+    <div class="dashboard">
+        
+        <div class="panel">
+            <h3 style="margin-top:0; color: var(--clr-primary);">Configuración</h3>
+            <label for="numPeople">Número de personas (1-10):</label>
+            <input type="number" id="numPeople" min="1" max="10" value="3" style="width: 70px; padding: 6px; margin-bottom: 15px;" onchange="initUsers()">
+            
+            <h4 style="margin-bottom: 10px;">Selecciona quién se va:</h4>
+            <div id="usersContainer"></div>
+            
+            <button class="btn-block btn-pdf" onclick="exportToPDF()">Descargar PDF (Horizontal)</button>
+            <button class="btn-block btn-clear" onclick="clearAllVacations()">Borrar Vacaciones</button>
+        </div>
+
+        <div class="calendar-section">
+            <div class="cal-header">
+                <button onclick="changeMonth(-1)">◀ Anterior</button>
+                <h2 style="margin:0; font-size: 22px; color: var(--text-main); display: flex; align-items: center;">
+                    <span id="monthLabel"></span> 
+                    <select id="yearSelect" onchange="renderCalendar()"></select>
+                </h2>
+                <button onclick="changeMonth(1)">Siguiente ▶</button>
+            </div>
+            
+            <div class="weekdays">
+                <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+            </div>
+            <div class="days-grid" id="daysContainer"></div>
+        </div>
+        
+    </div>
+</div>
+
+<div id="pdf-template"></div>
+
+<script>
+    const colors = ['#e6194B', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#008080', '#469990'];
+    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+    
+    let appData = {
+        users: [],
+        vacations: {} 
+    };
+
+    window.onload = function() {
+        initYearSelect();
+        loadFromStorage();
+        if(appData.users.length === 0) {
+            initUsers();
+        } else {
+            document.getElementById('numPeople').value = appData.users.length;
+            renderUsers();
+        }
+        renderCalendar();
+    };
+
+    function initYearSelect() {
+        const select = document.getElementById('yearSelect');
+        for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+            let opt = document.createElement('option');
+            opt.value = i; opt.innerHTML = i;
+            if(i === currentYear) opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
+
+    function initUsers() {
+        const count = parseInt(document.getElementById('numPeople').value);
+        const currentUsers = [...appData.users];
+        appData.users = [];
+        for (let i = 0; i < count; i++) {
+            appData.users.push({
+                id: i,
+                name: currentUsers[i] ? currentUsers[i].name : `Persona ${i+1}`,
+                color: colors[i]
+            });
+        }
+        renderUsers();
+        saveToStorage();
+        renderCalendar();
+    }
+
+    function renderUsers() {
+        const container = document.getElementById('usersContainer');
+        container.innerHTML = '';
+        appData.users.forEach((user, index) => {
+            container.innerHTML += `
+                <div class="user-row">
+                    <input type="radio" name="selectedUser" value="${user.id}" class="user-radio" ${index === 0 ? 'checked' : ''}>
+                    <div class="color-box" style="background: ${user.color}"></div>
+                    <input type="text" class="user-name-input" value="${user.name}" data-id="${user.id}" onchange="updateUserName(this)">
+                </div>
+            `;
+        });
+    }
+
+    function updateUserName(input) {
+        const id = parseInt(input.getAttribute('data-id'));
+        appData.users[id].name = input.value;
+        saveToStorage();
+        renderCalendar();
+    }
+
+    function getSelectedUserId() {
+        const checked = document.querySelector('input[name="selectedUser"]:checked');
+        return checked ? parseInt(checked.value) : null;
+    }
+
+    function renderCalendar() {
+        currentYear = parseInt(document.getElementById('yearSelect').value);
+        document.getElementById('monthLabel').innerText = months[currentMonth];
+        const container = document.getElementById('daysContainer');
+        container.innerHTML = '';
+
+        let firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        firstDay = firstDay === 0 ? 6 : firstDay - 1; 
+        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) container.innerHTML += `<div class="day-cell empty"></div>`;
+
+        for (let day = 1; day <= totalDays; day++) {
+            const dateStr = formatDate(currentYear, currentMonth, day);
+            let indicatorsHtml = '';
+            
+            if (appData.vacations[dateStr]) {
+                appData.vacations[dateStr].forEach(userId => {
+                    const u = appData.users.find(user => user.id === userId);
+                    if (u) {
+                        indicatorsHtml += `<div class="vacation-indicator" style="background:${u.color}; color:#fff;">${u.name}</div>`;
+                    }
+                });
+            }
+
+            container.innerHTML += `
+                <div class="day-cell" onclick="handleDayClick(${day})">
+                    <span class="day-num">${day}</span>
+                    ${indicatorsHtml}
+                </div>
+            `;
+        }
+    }
+
+    function changeMonth(direction) {
+        currentMonth += direction;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        document.getElementById('yearSelect').value = currentYear;
+        renderCalendar();
+    }
+
+    function countUserVacationDays(userId, year) {
+        let count = 0;
+        for (const dateStr in appData.vacations) {
+            if (dateStr.startsWith(year) && appData.vacations[dateStr].includes(userId)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    function handleDayClick(startDay) {
+        const userId = getSelectedUserId();
+        if (userId === null) return alert("Selecciona una persona primero.");
+
+        const clickedDateStr = formatDate(currentYear, currentMonth, startDay);
+        
+        if (appData.vacations[clickedDateStr] && appData.vacations[clickedDateStr].includes(userId)) {
+            if(confirm(`¿Deseas eliminar las vacaciones de este periodo para esta persona?`)) {
+                removeUserVacations(userId, currentYear);
+                saveToStorage();
+                renderCalendar();
+            }
+            return;
+        }
+
+        const currentAllocatedDays = countUserVacationDays(userId, currentYear);
+        if (currentAllocatedDays >= 15) {
+            alert("Esta persona ya tiene asignado su periodo de 15 días de vacaciones para este año.");
+            return;
+        }
+
+        let startDate = new Date(currentYear, currentMonth, startDay);
+        for (let k = 0; k < 15; k++) {
+            let nextDate = new Date(startDate);
+            nextDate.setDate(startDate.getDate() + k);
+            
+            const dateStr = formatDate(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+            
+            if (!appData.vacations[dateStr]) appData.vacations[dateStr] = [];
+            if (!appData.vacations[dateStr].includes(userId)) {
+                appData.vacations[dateStr].push(userId);
+            }
+        }
+
+        saveToStorage();
+        renderCalendar();
+    }
+
+    function removeUserVacations(userId, year) {
+        for (const dateStr in appData.vacations) {
+            if (dateStr.startsWith(year)) {
+                appData.vacations[dateStr] = appData.vacations[dateStr].filter(id => id !== userId);
+                if (appData.vacations[dateStr].length === 0) {
+                    delete appData.vacations[dateStr];
+                }
+            }
+        }
+    }
+
+    function clearAllVacations() {
+        if(confirm("¿Seguro que quieres borrar TODAS las vacaciones registradas en el sistema?")) {
+            appData.vacations = {};
+            saveToStorage();
+            renderCalendar();
+        }
+    }
+
+    function formatDate(y, m, d) {
+        return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function saveToStorage() { localStorage.setItem('vacation_app_data_v2', JSON.stringify(appData)); }
+    function loadFromStorage() {
+        const stored = localStorage.getItem('vacation_app_data_v2');
+        if (stored) appData = JSON.parse(stored);
+    }
+
+    function exportToPDF() {
+        const tempContainer = document.getElementById('pdf-template');
+        tempContainer.innerHTML = ''; 
+        tempContainer.style.display = 'block';
+
+        let styleInject = `
+            <style>
+                .pdf-grid-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; font-size:9px; }
+                .pdf-day { border: 1px solid #bbb; padding: 1px; min-height: 28px; max-height: 28px; background: #fff; overflow:hidden; }
+                .pdf-day.empty { background: #f2f2f2; border: 1px solid #e0e0e0; }
+                .pdf-legend { grid-column: span 2; display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; background: #eaeded; padding: 6px; border-radius: 4px; border: 1px solid #ccc;}
+            </style>
+        `;
+        tempContainer.innerHTML += styleInject;
+
+        for (let m = 0; m < 12; m += 2) {
+            let pageHtml = `<div class="pdf-page">`;
+            
+            for (let offset = 0; offset < 2; offset++) {
+                let mIdx = m + offset;
+                let firstDay = new Date(currentYear, mIdx, 1).getDay();
+                firstDay = firstDay === 0 ? 6 : firstDay - 1;
+                let totalDays = new Date(currentYear, mIdx + 1, 0).getDate();
+
+                pageHtml += `
+                    <div class="pdf-month">
+                        <h4 style="text-align:center; margin: 2px 0 6px 0; font-size:14px; color:#2c3e50;">${months[mIdx].toUpperCase()} ${currentYear}</h4>
+                        <div style="display:grid; grid-template-columns: repeat(7,1fr); text-align:center; font-weight:bold; font-size:9px; margin-bottom:3px; background:#f2f2f2; padding:2px 0;">
+                            <div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
+                        </div>
+                        <div class="pdf-grid-days">
+                `;
+
+                for (let i = 0; i < firstDay; i++) pageHtml += `<div class="pdf-day empty"></div>`;
+
+                for (let d = 1; d <= totalDays; d++) {
+                    const dateStr = formatDate(currentYear, mIdx, d);
+                    let dayColors = '';
+                    if (appData.vacations[dateStr]) {
+                        appData.vacations[dateStr].forEach(userId => {
+                            const u = appData.users.find(user => user.id === userId);
+                            if(u) dayColors += `<div style="background:${u.color}; color:white; font-size:7px; padding:1px; margin-top:1px; text-align:center; font-weight:bold; border-radius:1px; white-space:nowrap; overflow:hidden;">${u.name.substring(0,6)}</div>`;
+                        });
+                    }
+                    pageHtml += `<div class="pdf-day"><strong style="font-size:9px;">${d}</strong>${dayColors}</div>`;
+                }
+
+                pageHtml += `</div></div>`; 
+            }
+
+            pageHtml += `<div class="pdf-legend"><strong>Personal: </strong>`;
+            appData.users.forEach(u => {
+                pageHtml += `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:bold;"><span style="width:11px; height:11px; background:${u.color}; display:inline-block; border-radius:2px; border:1px solid #777;"></span>${u.name}</span>`;
+            });
+            pageHtml += `</div></div>`; 
+            tempContainer.innerHTML += pageHtml;
+        }
+
+        const opt = {
+            margin:       0,
+            filename:     `Calendario_Vacaciones_${currentYear}.pdf`,
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(tempContainer).save().then(() => {
+            tempContainer.style.display = 'none'; 
+        });
+    }
+</script>
+
+</body>
+</html>

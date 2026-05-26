@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Markdown Profesional con Ayuda</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="./css/estilos.css">
+    <style>
+        /* --- ARQUITECTURA DE LA APLICACIÓN --- */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        .toolbar h2 { margin: 0; font-size: 20px; color: var(--clr-primary); }
+        .toolbar .actions { display: flex; gap: 10px; }
+        .toolbar .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .toolbar .btn:hover { background: #f1f5f9; }
+        .toolbar .btn-primary { background: var(--clr-primary); color: white; border-color: var(--clr-primary); }
+        .toolbar .btn-primary:hover { opacity: 0.9; }
+        .toolbar .btn-help { background: #f8fafc; border-color: #cbd5e1; }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 15px;
+            align-items: stretch;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- MENÚ LATERAL DE AYUDA INTERACTIVO --- */
+        .help-sidebar {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 550px;
+            transition: all 0.3s ease;
+            width: 260px;
+            box-sizing: border-box;
+        }
+        /* Comportamiento colapsable dinámico */
+        .help-sidebar.closed {
+            width: 0;
+            padding: 0;
+            margin-right: -15px;
+            border: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .help-sidebar h3 { margin-top: 0; margin-bottom: 5px; color: var(--text-main); font-size: 16px; }
+        
+        .help-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .help-item:hover {
+            background: #f0fdf4;
+            border-color: var(--clr-success);
+            transform: translateY(-1px);
+        }
+        .help-item code {
+            background: #e2e8f0;
+            color: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* --- ESPACIO DE EDICIÓN Y VISTA PREVIA SIMULTÁNEA --- */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        .help-sidebar.closed + .workspace {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .editor-container, .preview-container {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            height: 550px;
+            box-sizing: border-box;
+        }
+        .editor-container textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 15px;
+            resize: none;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            outline: none;
+            box-sizing: border-box;
+            border-radius: 8px;
+        }
+        .preview-container {
+            padding: 20px;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+
+        /* Estilización interna del HTML renderizado */
+        .preview-container h1, .preview-container h2 { color: var(--clr-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-top: 0; }
+        .preview-container code { background: #f1f5f9; padding: 2px 5px; border-radius: 4px; color: #db2777; font-family: monospace; }
+        .preview-container pre { background: #1e293b; color: white; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        .preview-container pre code { color: inherit; background: transparent; padding: 0; }
+        .preview-container blockquote { border-left: 4px solid var(--clr-primary); margin: 0; padding-left: 15px; color: #475569; font-style: italic; }
+        
+        /* Controles ocultos por defecto para pantallas de ordenador */
+        .mobile-tabs { display: none; }
+
+        /* --- ADAPTACIÓN RESPONSIVE PARA MÓVILES --- */
+        @media (max-width: 768px) {
+            .main-container { grid-template-columns: 1fr; }
+            .help-sidebar { width: 100%; max-height: 200px; }
+            .help-sidebar.closed { display: none; }
+            
+            .mobile-tabs {
+                display: flex;
+                background: #e2e8f0;
+                padding: 4px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                gap: 4px;
+            }
+            .tab-btn {
+                flex: 1;
+                border: none;
+                padding: 8px;
+                background: transparent;
+                cursor: pointer;
+                font-weight: 600;
+                border-radius: 6px;
+                color: #64748b;
+            }
+            .tab-btn.active { background: #ffffff; color: var(--clr-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+            .workspace .editor-container, .workspace .preview-container { display: none; height: 400px; }
+            .workspace.show-editor .editor-container { display: block; }
+            .workspace.show-preview .preview-container { display: block; }
+            .workspace { grid-template-columns: 1fr !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width: 1300px; margin-top: 20px; padding: 0 10px;">
+    
+    <div class="toolbar">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn btn-help" onclick="toggleHelp()">❓ Guía Rápida</button>
+            <h2>Editor Markdown</h2>
+        </div>
+        <div class="actions">
+            <button class="btn" onclick="exportHTML()">📁 Exportar HTML</button>
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Guardar PDF</button>
+        </div>
+    </div>
+
+    <div class="mobile-tabs">
+        <button id="btn-tab-editor" class="tab-btn active" onclick="switchMobileTab('editor')">Escribir (.md)</button>
+        <button id="btn-tab-preview" class="tab-btn" onclick="switchMobileTab('preview')">Vista Previa</button>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="help-sidebar" id="helpSidebar">
+            <h3>Sintaxis Markdown</h3>
+            <p style="font-size: 11px; opacity: 0.7; margin-bottom: 15px;">Pulsa un elemento para insertarlo directamente:</p>
+            
+            <div class="help-item" onclick="insertMarkdown('# ')">
+                <span>Título 1</span><code># H1</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('## ')">
+                <span>Título 2</span><code>## H2</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('**texto**')">
+                <span>Negrita</span><code>**txt**</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('*texto*')">
+                <span>Cursiva</span><code>*txt*</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('- ')">
+                <span>Lista Puntos</span><code>- ítem</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('1. ')">
+                <span>Lista Números</span><code>1. ítem</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('[Enlace](https://) ')">
+                <span>Enlace Web</span><code>[url]</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('> ')">
+                <span>Cita / Bloque</span><code>&gt; bloque</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('`código`')">
+                <span>Línea Código</span><code>`code`</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('\n```javascript\n\n```')">
+                <span>Bloque Código</span><code>```js</code>
+            </div>
+            <div class="help-item" onclick="insertMarkdown('\n| Título 1 | Título 2 |\n|---|---|\n| Celda 1 | Celda 2 |\n')">
+                <span>Tabla Completa</span><code>|tabla|</code>
+            </div>
+        </div>
+
+        <div class="workspace show-editor" id="workspace">
+            <div class="editor-container">
+                <textarea id="markdown-input" placeholder="Escribe aquí..." oninput="updatePreview()" onscroll="syncScroll(this)"></textarea>
+            </div>
+            <div class="preview-container" id="preview-output"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const textarea = document.getElementById('markdown-input');
+    const preview = document.getElementById('preview-output');
+    const workspace = document.getElementById('workspace');
+    const sidebar = document.getElementById('helpSidebar');
+
+    window.onload = function() {
+        loadDocument();
+        updatePreview();
+    };
+
+    function updatePreview() {
+        const text = textarea.value;
+        preview.innerHTML = marked.parse(text);
+        saveDocument(text);
+    }
+
+    function syncScroll(element) {
+        const scrollPercentage = element.scrollTop / (element.scrollHeight - element.clientHeight);
+        preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
+    }
+
+    function toggleHelp() {
+        sidebar.classList.toggle('closed');
+    }
+
+    function insertMarkdown(syntax) {
+        const startPos = textarea.selectionStart;
+        const endPos = textarea.selectionEnd;
+        const text = textarea.value;
+
+        textarea.value = text.substring(0, startPos) + syntax + text.substring(endPos, text.length);
+        
+        textarea.focus();
+        textarea.selectionStart = startPos + syntax.length;
+        textarea.selectionEnd = startPos + syntax.length;
+        
+        updatePreview();
+    }
+
+    function switchMobileTab(target) {
+        document.getElementById('btn-tab-editor').classList.remove('active');
+        document.getElementById('btn-tab-preview').classList.remove('active');
+        
+        if (target === 'editor') {
+            document.getElementById('btn-tab-editor').classList.add('active');
+            workspace.className = "workspace show-editor";
+        } else {
+            document.getElementById('btn-tab-preview').classList.add('active');
+            workspace.className = "workspace show-preview";
+        }
+    }
+
+    function exportHTML() {
+        const markdownBody = preview.innerHTML;
+        const fullHtmlDocument = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Documento</title><style>body { font-family: system-ui, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; } h1, h2 { border-bottom: 1px solid #eee; padding-bottom: 8px; } code { background: #f1f5f9; padding: 3px 6px; border-radius: 4px; font-family: monospace; color: #db2777; } pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; } blockquote { border-left: 4px solid #3b82f6; margin: 0; padding-left: 15px; color: #64748b; font-style: italic; }</style></head><body>${markdownBody}</body></html>`;
+        const blob = new Blob([fullHtmlDocument], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'documento_markdown.html';
+        a.click();
+        a.remove();
+    }
+
+    function saveDocument(text) { localStorage.setItem('local_markdown_text', text); }
+    function loadDocument() {
+        const stored = localStorage.getItem('local_markdown_text');
+        if (stored !== null) {
+            textarea.value = stored;
+        } else {
+            textarea.value = `# Mi Documento de Notas\n\nEste es un **editor Markdown profesional**.\n\nPulsa el botón ❓ Guía Rápida para ver comandos u ocultar el panel.`;
+        }
+    }
+</script>
+
+</body>
+</html>
