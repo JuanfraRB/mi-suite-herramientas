@@ -407,6 +407,19 @@ th {
 }
 
 /* ==========================================================================
+   5. S DE PREVISIÓN METEOROLÓGICA
+   ========================================================================== */
+   .btn-weather {
+    background-color: #0284c7; /* Azul cielo tecnológico */
+    color: #ffffff;
+    }
+
+.btn-weather:hover {
+    background-color: #0369a1; /* Tono más oscuro al pasar el cursor */
+    transform: translateY(-2px); /* Mantiene la animación de levitación de tu suite */
+}
+
+/* ==========================================================================
    DISEÑO RESPONSIVE GENERAL (MÓVILES)
    ========================================================================== */
 @media (max-width: 768px) {
