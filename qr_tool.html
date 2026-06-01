@@ -1,96 +1,447 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herramienta QR: Generador y Lector</title>
-    <link rel="stylesheet" href="./css/estilos.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Herramienta QR Total Multiplataforma</title>
+    <link rel="stylesheet" href="./css/estilos.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-</head>
-<body>
+    <style>
+      .body-scanning {
+        --background: transparent !important;
+        background-color: transparent !important;
+      }
+      .body-scanning .container {
+        display: none !important;
+      }
 
-<div class="container" style="max-width: 450px; margin-top: 40px;">
-    <div class="card">
-        <h2 style="text-align: center; color: #2c3e50;">Herramienta QR</h2>
-        
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('generate')">Generar</button>
-            <button class="tab-btn" onclick="switchTab('read')">Leer Imagen</button>
+      #btn-cancel-scan {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background-color: #ef4444;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 30px;
+        border: none;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      }
+      #web-camera-container {
+        display: none;
+        margin-top: 15px;
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+      }
+      #web-video {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* Zona estética para subir archivos en PC */
+      .file-fallback-zone {
+        margin-top: 15px;
+        text-align: center;
+        padding: 15px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+      .file-fallback-zone input[type="file"] {
+        display: none;
+      }
+      .file-fallback-zone label {
+        color: #0284c7;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .file-fallback-zone label:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="btn-cancel-scan" onclick="stopScan()">
+      ❌ Cancelar Escaneo
+    </button>
+
+    <div class="container" style="max-width: 450px; margin-top: 40px">
+      <div class="card">
+        <h2 style="text-align: center; color: var(--clr-primary)">
+          Herramienta QR
+        </h2>
+
+        <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 20px">
+          <button
+            class="tab-btn active"
+            onclick="switchTab('generate')"
+            style="flex: 1; padding: 10px"
+          >
+            Generar
+          </button>
+          <button
+            class="tab-btn"
+            onclick="switchTab('read')"
+            style="flex: 1; padding: 10px"
+          >
+            Escanear QR
+          </button>
         </div>
 
         <div id="tab-generate" class="tab-content active">
-            <label>Texto o Enlace Web:</label>
-            <input type="text" id="qrText" placeholder="Escribe aquí para crear el QR..." oninput="generateQR()">
-            
-            <div class="qr-output-container">
-                <div id="qrcode" style="padding: 10px; background: white;"></div>
-                <button class="btn-block" onclick="downloadQR()">Descargar Imagen QR</button>
-            </div>
+          <label style="font-weight: 600">Texto o Enlace Web:</label>
+          <input
+            type="text"
+            id="qrText"
+            placeholder="Escribe aquí para crear el QR..."
+            oninput="generateQR()"
+            style="
+              width: 100%;
+              padding: 10px;
+              margin-top: 5px;
+              border-radius: 6px;
+            "
+          />
+
+          <div
+            class="qr-output-container"
+            style="text-align: center; margin-top: 20px"
+          >
+            <div
+              id="qrcode"
+              style="
+                padding: 15px;
+                background: white;
+                display: inline-block;
+                border-radius: 8px;
+              "
+            ></div>
+            <button
+              class="btn-block"
+              onclick="downloadQR()"
+              style="margin-top: 15px"
+            >
+              Descargar Imagen QR
+            </button>
+          </div>
         </div>
 
-        <div id="tab-read" class="tab-content">
-            <label>Sube una foto de un QR:</label>
-            <input type="file" id="qrFile" accept="image/*" onchange="scanQR()">
-            
-            <label>Contenido detectado:</label>
-            <div id="result-text" style="background: #eef2f7; padding: 12px; border-radius: 6px; word-break: break-all; margin-top: 10px; font-weight: bold; text-align: center;">Ningún código detectado</div>
-            <button class="btn-block" id="btnCopy" onclick="copyResult()" style="display:none; background-color: #27ae60;">Copiar al Portapapeles</button>
+        <div id="tab-read" class="tab-content" style="display: none">
+          <p
+            style="
+              color: #64748b;
+              font-size: 14px;
+              text-align: center;
+              margin-bottom: 15px;
+            "
+          >
+            Escanea en vivo con tu cámara o sube un archivo de imagen desde tu
+            equipo.
+          </p>
+
+          <button
+            class="btn-block"
+            id="btn-trigger-scan"
+            onclick="startScan()"
+            style="background-color: #0284c7; font-size: 16px; padding: 14px"
+          >
+            📷 Activar Cámara en Vivo
+          </button>
+
+          <div id="web-camera-container">
+            <video id="web-video" playsinline></video>
+          </div>
+
+          <div id="fallback-area" class="file-fallback-zone">
+            <span>¿No tienes cámara? </span>
+            <label for="qrFile">Sube una foto de un QR</label>
+            <input
+              type="file"
+              id="qrFile"
+              accept="image/*"
+              onchange="scanQRFromFile()"
+            />
+          </div>
+
+          <label style="font-weight: 600; display: block; margin-top: 25px"
+            >Contenido detectado:</label
+          >
+          <div
+            id="result-text"
+            style="
+              background: #f1f5f9;
+              padding: 15px;
+              border-radius: 6px;
+              word-break: break-all;
+              margin-top: 8px;
+              font-weight: bold;
+              text-align: center;
+              border: 1px dashed #cbd5e1;
+            "
+          >
+            Ningún código detectado
+          </div>
+          <button
+            class="btn-block"
+            id="btnCopy"
+            onclick="copyResult()"
+            style="display: none; background-color: #10b981; margin-top: 10px"
+          >
+            Copiar al Portapapeles
+          </button>
         </div>
+      </div>
     </div>
-</div>
 
-<canvas id="hiddenCanvas" style="display:none;"></canvas>
+    <canvas id="hiddenCanvas" style="display: none"></canvas>
 
-<script>
-    let qrGenerator = null;
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        if(tab === 'generate') {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('tab-generate').classList.add('active');
+    <script>
+      let qrGenerator = null;
+      let webStream = null;
+      let webAnimationId = null;
+
+      const isMobileApp =
+        window.Capacitor && window.Capacitor.isNativePlatform();
+
+      function switchTab(tab) {
+        const genTab = document.getElementById("tab-generate");
+        const readTab = document.getElementById("tab-read");
+        const buttons = document.querySelectorAll(".tab-btn");
+        if (webStream) stopScan();
+
+        if (tab === "generate") {
+          buttons[0].classList.add("active");
+          buttons[1].classList.remove("active");
+          genTab.style.display = "block";
+          readTab.style.display = "none";
         } else {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.getElementById('tab-read').classList.add('active');
+          buttons[1].classList.add("active");
+          buttons[0].classList.remove("active");
+          genTab.style.display = "none";
+          readTab.style.display = "block";
         }
-    }
-    function generateQR() {
-        const text = document.getElementById('qrText').value.trim();
-        const container = document.getElementById('qrcode');
+      }
+
+      function generateQR() {
+        const text = document.getElementById("qrText").value.trim();
+        const container = document.getElementById("qrcode");
         container.innerHTML = "";
-        if(!text) return;
-        qrGenerator = new QRCode(container, { text: text, width: 200, height: 200, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
-    }
-    function downloadQR() {
-        const img = document.querySelector('#qrcode img');
-        if(!img) return alert("Escribe texto primero.");
-        const a = document.createElement('a'); a.href = img.src; a.download = 'codigo_qr.png'; a.click();
-    }
-    function scanQR() {
-        const fileInput = document.getElementById('qrFile');
-        const resultDiv = document.getElementById('result-text');
-        const btnCopy = document.getElementById('btnCopy');
-        if(!fileInput.files[0]) return;
+        if (!text) return;
+        qrGenerator = new QRCode(container, {
+          text: text,
+          width: 200,
+          height: 200,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H,
+        });
+      }
+
+      function downloadQR() {
+        const img = document.querySelector("#qrcode img");
+        if (!img) return alert("Escribe texto primero.");
+        const a = document.createElement("a");
+        a.href = img.src;
+        a.download = "codigo_qr.png";
+        a.click();
+      }
+
+      // CONTROLADORES DE CÁMARA EN VIVO
+      function startScan() {
+        if (isMobileApp) {
+          startNativeMobileScan();
+        } else {
+          startWebBrowserScan();
+        }
+      }
+
+      function stopScan() {
+        if (isMobileApp) {
+          stopNativeMobileScan();
+        } else {
+          stopWebBrowserScan();
+        }
+      }
+
+      /* --- VÍA 1: APP MÓVIL NATIVA --- */
+      async function startNativeMobileScan() {
+        const { BarcodeScanner } = window.Capacitor.Plugins;
+        const resultDiv = document.getElementById("result-text");
+        const btnCopy = document.getElementById("btnCopy");
+        try {
+          const status = await BarcodeScanner.requestPermissions();
+          if (status.camera !== "granted") return alert("Permisos denegados.");
+
+          document.body.classList.add("body-scanning");
+          document.getElementById("btn-cancel-scan").style.display = "block";
+          await BarcodeScanner.hideBackground();
+
+          const result = await BarcodeScanner.startScan();
+          if (result.hasContent) {
+            resultDiv.innerText = result.content;
+            btnCopy.style.display = "block";
+          }
+        } catch (error) {
+          console.error(error);
+        } finally {
+          stopNativeMobileScan();
+        }
+      }
+
+      async function stopNativeMobileScan() {
+        const { BarcodeScanner } = window.Capacitor.Plugins;
+        document.body.classList.remove("body-scanning");
+        document.getElementById("btn-cancel-scan").style.display = "none";
+        if (window.Capacitor.isPluginAvailable("BarcodeScanner")) {
+          await BarcodeScanner.showBackground();
+          await BarcodeScanner.stopScan();
+        }
+      }
+
+      /* --- VÍA 2: STREAMING CÁMARA WEB --- */
+      async function startWebBrowserScan() {
+        const video = document.getElementById("web-video");
+        const container = document.getElementById("web-camera-container");
+        const btnTrigger = document.getElementById("btn-trigger-scan");
+        const btnCancel = document.getElementById("btn-cancel-scan");
+
+        try {
+          webStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          video.srcObject = webStream;
+          video.setAttribute("playsinline", true);
+          video.play();
+
+          container.style.display = "block";
+          btnTrigger.style.display = "none";
+          btnCancel.style.display = "block";
+
+          webAnimationId = requestAnimationFrame(tickWebCanvasScanned);
+        } catch (err) {
+          alert(
+            "No se detectó ninguna cámara de streaming activa o se denegaron los permisos. Usa la opción de subir archivo justo abajo.",
+          );
+        }
+      }
+
+      function tickWebCanvasScanned() {
+        const video = document.getElementById("web-video");
+        const resultDiv = document.getElementById("result-text");
+        const btnCopy = document.getElementById("btnCopy");
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          const canvas = document.createElement("canvas");
+          canvas.width = 300;
+          canvas.height = (video.videoHeight / video.videoWidth) * 300;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+
+          if (code && code.data.trim() !== "") {
+            resultDiv.innerText = code.data;
+            btnCopy.style.display = "block";
+            stopWebBrowserScan();
+            return;
+          }
+        }
+        if (webStream)
+          webAnimationId = requestAnimationFrame(tickWebCanvasScanned);
+      }
+
+      function stopWebBrowserScan() {
+        const container = document.getElementById("web-camera-container");
+        const btnTrigger = document.getElementById("btn-trigger-scan");
+        const btnCancel = document.getElementById("btn-cancel-scan");
+
+        if (webStream) {
+          webStream.getTracks().forEach((track) => track.stop());
+          webStream = null;
+        }
+        if (webAnimationId) cancelAnimationFrame(webAnimationId);
+
+        container.style.display = "none";
+        btnTrigger.style.display = "block";
+        btnCancel.style.display = "none";
+      }
+
+      /* --- VÍA 3: SUBIDA DE ARCHIVO DE IMAGEN (Para ordenadores sin cámara) --- */
+      function scanQRFromFile() {
+        const fileInput = document.getElementById("qrFile");
+        const resultDiv = document.getElementById("result-text");
+        const btnCopy = document.getElementById("btnCopy");
+
+        if (!fileInput.files[0]) return;
+
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.getElementById('hiddenCanvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width; canvas.height = img.height;
-                ctx.drawImage(img, 0, 0, img.width, img.height);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-                if (code) { resultDiv.innerText = code.data; btnCopy.style.display = 'block'; }
-                else { resultDiv.innerText = "No se pudo leer ningún QR."; btnCopy.style.display = 'none'; }
-            };
-            img.src = e.target.result;
+        reader.onload = function (e) {
+          const img = new Image();
+          img.onload = function () {
+            const canvas = document.getElementById("hiddenCanvas");
+            const ctx = canvas.getContext("2d");
+
+            // Escalamos la imagen del archivo a max 600px de ancho en el canvas de PC
+            // Así evitamos que reviente por exceso de resolución y jsQR la lee bien
+            const maxW = 600;
+            const scale = Math.min(maxW / img.width, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height,
+            );
+
+            const code = jsQR(
+              imageData.data,
+              imageData.width,
+              imageData.height,
+              { inversionAttempts: "dontInvert" },
+            );
+
+            if (code && code.data.trim() !== "") {
+              resultDiv.innerText = code.data;
+              btnCopy.style.display = "block";
+            } else {
+              resultDiv.innerText =
+                "No se pudo detectar un código QR nítido en el archivo. Inténtalo con otra toma.";
+              btnCopy.style.display = "none";
+            }
+          };
+          img.src = e.target.result;
         };
         reader.readAsDataURL(fileInput.files[0]);
-    }
-    function copyResult() { navigator.clipboard.writeText(document.getElementById('result-text').innerText); alert("¡Copiado!"); }
-    window.onload = function() { document.getElementById('qrText').value = "https://google.com"; generateQR(); }
-</script>
-</body>
+      }
+
+      function copyResult() {
+        navigator.clipboard.writeText(
+          document.getElementById("result-text").innerText,
+        );
+        alert("¡Copiado!");
+      }
+
+      window.onload = function () {
+        document.getElementById("qrText").value = "https://google.com";
+        generateQR();
+
+        // Escondemos la zona de subir archivo en la app móvil real para limpiar interfaz
+        if (isMobileApp) {
+          document.getElementById("fallback-area").style.display = "none";
+        }
+      };
+    </script>
+  </body>
 </html>
